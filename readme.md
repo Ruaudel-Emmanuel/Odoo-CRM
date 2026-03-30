@@ -1,5 +1,3 @@
-<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" style="height:64px;margin-right:32px"/>
-
 # Webhook to Odoo CRM via JSON‑RPC
 
 This workflow turns n8n into a small HTTP API that receives lead data (e.g. from a browser extension), normalises it, and creates a **`crm.lead`** record in **Odoo CRM** using the **JSON‑RPC** API instead of the n8n Odoo node.[^1][^2]
@@ -165,23 +163,4 @@ curl -X POST "<TEST_URL>" \
 ```
 
 
-## Why JSON‑RPC instead of the Odoo node?
-
-- Uses Odoo’s **official JSON‑RPC API** (`authenticate` + `execute_kw`), which is stable across versions.[^1][^3]
-- Avoids coupling to n8n’s Odoo node implementation details or version differences.[^5]
-- Makes it easier to port this workflow across environments (local Docker, remote n8n, etc.) as long as the Odoo URL is reachable.[^1]
-
-If you want, the next step can be a **“create‑or‑update lead”** version that first searches `crm.lead` by `email_from` and only creates a new one if no matching lead exists.
-
-<div align="center">⁂</div>
-
-[^1]: https://askkusse.blogspot.com/?page=en-git-scaleupventures01-twentyhq-1772425645282
-
-[^2]: https://www.perplexity.ai/search/ecfb2fd2-5246-42d3-87d3-07c2a63851d3
-
-[^3]: Projet Dashboard Full-Stack _ Django + React_Angul.docx
-
-[^4]: https://www.perplexity.ai/search/59b45913-002e-42d6-8478-1a45dd067fa5
-
-[^5]: https://n8n.io/integrations/hubspot/and/odoo/
 
