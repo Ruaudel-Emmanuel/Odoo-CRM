@@ -1,0 +1,245 @@
+{
+  "name": "Webhook to Odoo CRM via JSON-RPC",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "odoo-jsonrpc-lead",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "webhookId": "odoo-jsonrpc-lead-placeholder"
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "name",
+              "value": "={{$json.body.leadTitle || 'Lead entrant depuis extension'}}"
+            },
+            {
+              "name": "contact_name",
+              "value": "={{(($json.body.firstName || '') + ' ' + ($json.body.lastName || '')).trim()}}"
+            },
+            {
+              "name": "partner_name",
+              "value": "={{$json.body.company || ''}}"
+            },
+            {
+              "name": "email_from",
+              "value": "={{$json.body.email || ''}}"
+            },
+            {
+              "name": "phone",
+              "value": "={{$json.body.phone || ''}}"
+            },
+            {
+              "name": "type",
+              "value": "lead"
+            },
+            {
+              "name": "description",
+              "value": "={{'Titre: ' + ($json.body.jobTitle || '') + '\\nLinkedIn: ' + ($json.body.linkedinUrl || '')}}"
+            },
+            {
+              "name": "odoo_url",
+              "value": "__ODOO_URL__"
+            },
+            {
+              "name": "odoo_db",
+              "value": "__ODOO_DATABASE__"
+            },
+            {
+              "name": "odoo_login",
+              "value": "__ODOO_LOGIN__"
+            },
+            {
+              "name": "odoo_password",
+              "value": "__ODOO_PASSWORD__"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.email_from}}",
+              "operation": "isNotEmpty"
+            },
+            {
+              "value1": "={{$json.name}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "IF Valid Lead",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$json.odoo_url + '/jsonrpc'}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"service\": \"common\",\n    \"method\": \"authenticate\",\n    \"args\": [\n      $json.odoo_db,\n      $json.odoo_login,\n      $json.odoo_password,\n      {}\n    ]\n  },\n  \"id\": 1\n}",
+        "options": {}
+      },
+      "id": "4",
+      "name": "Odoo Authenticate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        960,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$node['Edit Fields'].json.odoo_url + '/jsonrpc'}}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"call\",\n  \"params\": {\n    \"service\": \"object\",\n    \"method\": \"execute_kw\",\n    \"args\": [\n      $node['Edit Fields'].json.odoo_db,\n      $node['Odoo Authenticate'].json.result,\n      $node['Edit Fields'].json.odoo_password,\n      \"crm.lead\",\n      \"create\",\n      [\n        {\n          \"name\": $node['Edit Fields'].json.name,\n          \"contact_name\": $node['Edit Fields'].json.contact_name,\n          \"partner_name\": $node['Edit Fields'].json.partner_name,\n          \"email_from\": $node['Edit Fields'].json.email_from,\n          \"phone\": $node['Edit Fields'].json.phone,\n          \"type\": $node['Edit Fields'].json.type,\n          \"description\": $node['Edit Fields'].json.description\n        }\n      ]\n    ]\n  },\n  \"id\": 2\n}",
+        "options": {}
+      },
+      "id": "5",
+      "name": "Odoo Create Lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1220,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"message\": \"Lead créé dans Odoo CRM via JSON-RPC\",\n  \"lead_id\": $node['Odoo Create Lead'].json.result,\n  \"lead_name\": $node['Edit Fields'].json.name,\n  \"email\": $node['Edit Fields'].json.email_from\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "6",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1480,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": false,\n  \"message\": \"Champs obligatoires manquants\",\n  \"required\": [\"name\", \"email_from\"]\n}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "7",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        960,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "IF Valid Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Valid Lead": {
+      "main": [
+        [
+          {
+            "node": "Odoo Authenticate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Odoo Authenticate": {
+      "main": [
+        [
+          {
+            "node": "Odoo Create Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Odoo Create Lead": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "odoo-jsonrpc-workflow-placeholder"
+}
